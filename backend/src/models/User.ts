@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { IAuditFields, auditSchemaDefinition } from './common.js';
 
-export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STUDENT' | 'DRIVER' | 'ACCOUNTANT';
+export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STUDENT' | 'DRIVER' | 'ACCOUNTANT' | 'HOSTEL_HEAD' | 'LIBRARIAN';
 
 export interface IUser extends Document, IAuditFields {
   schoolId?: Types.ObjectId; // Optional for super_admin
@@ -34,7 +34,7 @@ const userSchema = new Schema<IUser>(
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
     roleId: { type: Schema.Types.ObjectId, ref: 'Role' },
-    role: { type: String, enum: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT', 'DRIVER', 'ACCOUNTANT'], required: true },
+    role: { type: String, enum: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT', 'DRIVER', 'ACCOUNTANT', 'HOSTEL_HEAD', 'LIBRARIAN'], required: true },
     isActive: { type: Boolean, default: true },
     lastLogin: { type: Date },
     profilePicture: { type: String },

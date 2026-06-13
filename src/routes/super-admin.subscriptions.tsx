@@ -100,7 +100,7 @@ function SuperAdminSubscriptions() {
       name,
       code,
       price,
-      currency: "USD",
+      currency: "INR",
       billingCycle,
       features,
       limits: {
@@ -192,7 +192,7 @@ function SuperAdminSubscriptions() {
                 </div>
 
                 <div className="my-6">
-                  <span className="text-4xl font-bold tracking-tight">${plan.price}</span>
+                  <span className="text-4xl font-bold tracking-tight">₹{plan.price}</span>
                   <span className="text-sm font-medium text-muted-foreground">/{plan.billingCycle?.toLowerCase() || 'monthly'}</span>
                 </div>
 
@@ -285,7 +285,7 @@ function SuperAdminSubscriptions() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Price ($)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Price (₹)</label>
                   <input 
                     id="plan-price" 
                     type="number" 

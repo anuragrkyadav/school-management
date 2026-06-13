@@ -784,19 +784,19 @@ function SuperAdminDirectory() {
                       {[
                         {
                           name: "Basic",
-                          rate: "$150/mo",
+                          rate: "₹150/mo",
                           quotas: "200 Students, 20 Teachers, 10GB",
                           modules: "Academics, Library",
                         },
                         {
                           name: "Pro",
-                          rate: "$450/mo",
+                          rate: "₹450/mo",
                           quotas: "500 Students, 50 Teachers, 50GB",
                           modules: "Academics, Finance, HR, Transport, AI Hub",
                         },
                         {
                           name: "Enterprise",
-                          rate: "$950/mo",
+                          rate: "₹950/mo",
                           quotas: "Unlimited Limits, 250GB",
                           modules: "All Core Modules + SSO Custom Webhooks",
                         },
@@ -1428,9 +1428,9 @@ function SuperAdminDirectory() {
                       }
                       className="h-10 w-full rounded-lg border border-border bg-card px-3 text-xs cursor-pointer"
                     >
-                      <option value="Basic">Basic ($150/mo)</option>
-                      <option value="Pro">Pro ($450/mo)</option>
-                      <option value="Enterprise">Enterprise ($950/mo)</option>
+                      <option value="Basic">Basic (₹150/mo)</option>
+                      <option value="Pro">Pro (₹450/mo)</option>
+                      <option value="Enterprise">Enterprise (₹950/mo)</option>
                     </select>
                   </div>
 

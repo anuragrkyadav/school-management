@@ -827,13 +827,24 @@ export class HostelController {
   static async createHostelVisitor(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const schoolId = req.user?.schoolId || "000000000000000000000001";
-      const { visitorName, studentName, room, purpose, status } = req.body;
+      const { 
+        visitorName, visitorType, studentName, relationship,
+        room, purpose, contact, workOrder, vehicleNo, idProof,
+        checkIn, status 
+      } = req.body;
       const visitor = new HostelVisitor({
         schoolId: new Types.ObjectId(schoolId as string),
         visitorName,
-        studentName,
-        room,
+        visitorType: visitorType || 'Other',
+        studentName: studentName || null,
+        relationship: relationship || null,
+        room: room || null,
         purpose,
+        contact: contact || null,
+        workOrder: workOrder || null,
+        vehicleNo: vehicleNo || null,
+        idProof: idProof || null,
+        checkIn: checkIn ? new Date(checkIn) : new Date(),
         status: status || 'checked-in',
         createdBy: new Types.ObjectId(req.user?.id || "000000000000000000000001"),
         updatedBy: new Types.ObjectId(req.user?.id || "000000000000000000000001")

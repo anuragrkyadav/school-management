@@ -34,7 +34,7 @@ function SuperAdminBilling() {
           </div>
           <div>
             <p className="text-sm font-medium text-muted-foreground">Total Revenue (YTD)</p>
-            <h4 className="text-2xl font-bold">$342,000</h4>
+            <h4 className="text-2xl font-bold">₹3,42,000</h4>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm flex items-center gap-4">
@@ -43,7 +43,7 @@ function SuperAdminBilling() {
           </div>
           <div>
             <p className="text-sm font-medium text-muted-foreground">Pending Payments</p>
-            <h4 className="text-2xl font-bold">$12,450</h4>
+            <h4 className="text-2xl font-bold">₹12,450</h4>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm flex items-center gap-4">
@@ -52,7 +52,7 @@ function SuperAdminBilling() {
           </div>
           <div>
             <p className="text-sm font-medium text-muted-foreground">Overdue Invoices</p>
-            <h4 className="text-2xl font-bold">$3,150</h4>
+            <h4 className="text-2xl font-bold">₹3,150</h4>
           </div>
         </div>
       </div>

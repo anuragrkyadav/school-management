@@ -20,14 +20,11 @@ import {
   ListPlus,
   RefreshCw,
   Search,
-  DollarSign,
+  IndianRupee,
   UserCheck,
   Calendar,
   LogOut,
-  LogIn,
-  ClipboardList,
-  Printer,
-  FileSpreadsheet
+  LogIn
 } from "lucide-react";
 import { PageHeader, StatCard, Panel, EmptyState } from "@/components/module-shell";
 import { apiClient } from "@/lib/api-client";
@@ -37,7 +34,7 @@ export const Route = createFileRoute("/admin/hostel")({
   component: Page,
 });
 
-type TabName = "dashboard" | "hostels" | "structure" | "allotments" | "fees" | "attendance" | "movement" | "visitors" | "complaints" | "reports";
+type TabName = "dashboard" | "hostels" | "structure" | "allotments" | "fees" | "attendance" | "movement" | "visitors" | "complaints";
 
 function Page() {
   const [tab, setTab] = useState<TabName>("dashboard");
@@ -630,7 +627,7 @@ function Page() {
           tone="success" 
         />
         <StatCard label="Open Complaints" value={String(analytics.openComplaints || complaints.length)} icon={AlertTriangle} tone="warning" />
-        <StatCard label="Pending Fees" value={`₹${(analytics.pendingFees || 0).toLocaleString()}`} icon={DollarSign} tone="critical" />
+        <StatCard label="Pending Fees" value={`₹${(analytics.pendingFees || 0).toLocaleString()}`} icon={IndianRupee} tone="critical" />
       </div>
 
       {/* Tabs */}
@@ -645,8 +642,7 @@ function Page() {
             ["attendance", "Attendance Roll Call"],
             ["movement", "Movement Register"],
             ["visitors", "Visitor Log"],
-            ["complaints", "Complaints Log"],
-            ["reports", "Reports Center"]
+            ["complaints", "Complaints Log"]
           ] as const
         ).map(([k, l]) => (
           <button
@@ -701,7 +697,18 @@ function Page() {
               </div>
             </Panel>
             
-            <Panel title="Warden Notice Board & Announcements">
+            <Panel
+              title="Warden Notice Board & Announcements"
+              action={
+                <button
+                  onClick={() => setShowNoticeModal(true)}
+                  className="flex items-center gap-1 text-xs text-accent hover:underline font-bold"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Notice
+                </button>
+              }
+            >
               <div className="space-y-4">
                 {notices.slice(0, 3).map(n => (
                   <div key={n._id || n.id} className="border-l-4 border-accent p-3 bg-accent/5 rounded-r-lg">
@@ -1463,7 +1470,7 @@ function Page() {
       {/* 8. Visitors Log */}
       {tab === "visitors" && (
         <Panel 
-          title="Visitor Register"
+          title="Campus Visitor Gate Register"
           action={
             <button onClick={() => setShowVisitorModal(true)} className="flex items-center gap-1 text-xs text-accent hover:underline font-bold">
               <Plus className="h-3.5 w-3.5" />
@@ -1472,36 +1479,75 @@ function Page() {
           }
         >
           <div className="space-y-3">
-            {visitors.map(v => (
-              <div key={v._id} className="flex items-center justify-between p-3.5 border border-border bg-card rounded-lg">
-                <div>
-                  <div className="font-bold text-sm">{v.visitorName}</div>
-                  <div className="text-xs text-muted-foreground">Visiting: {v.studentName} · Purpose: {v.purpose}</div>
-                  <div className="text-[10px] text-muted-foreground mt-1">In: {new Date(v.checkIn).toLocaleString()}</div>
+            {visitors.map(v => {
+              const typeColors: Record<string, string> = {
+                "Student Visitor": "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-300",
+                "Electrician": "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-300",
+                "Plumber": "bg-cyan-100 text-cyan-800 dark:bg-cyan-950/30 dark:text-cyan-300",
+                "Carpenter / Mason": "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-300",
+                "House Cleaner / Helper": "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-300",
+                "Delivery / Goods Truck": "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300",
+                "Courier / Post": "bg-teal-100 text-teal-800 dark:bg-teal-950/30 dark:text-teal-300",
+                "Contractor": "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-300",
+                "Government Inspector": "bg-slate-100 text-slate-800 dark:bg-slate-950/30 dark:text-slate-300",
+                "Vendor / Salesperson": "bg-pink-100 text-pink-800 dark:bg-pink-950/30 dark:text-pink-300",
+                "Other": "bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300",
+              };
+              const badge = typeColors[v.visitorType] || typeColors["Other"];
+              return (
+                <div key={v._id} className="flex items-start justify-between p-3.5 border border-border bg-card rounded-xl gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-bold text-sm">{v.visitorName}</span>
+                      {v.visitorType && (
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${badge}`}>
+                          {v.visitorType}
+                        </span>
+                      )}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                        v.status === 'checked-in' 
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' 
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {v.status === 'checked-in' ? '● Inside' : 'Checked Out'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {v.studentName && <span>Visiting: <strong className="text-foreground">{v.studentName}</strong> · </span>}
+                      {v.workOrder && <span>Work: <strong className="text-foreground">{v.workOrder}</strong> · </span>}
+                      Purpose: {v.purpose}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-1 flex gap-3 flex-wrap">
+                      <span>In: {v.checkIn ? new Date(v.checkIn).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</span>
+                      {v.checkOut && <span>Out: {new Date(v.checkOut).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</span>}
+                      {v.contact && <span>📞 {v.contact}</span>}
+                      {v.vehicleNo && <span>🚚 {v.vehicleNo}</span>}
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    {v.status === 'checked-in' ? (
+                      <button
+                        onClick={async () => {
+                          await apiClient(`/hostel/visitors/${v._id}`, {
+                            method: "PATCH",
+                            data: { status: "checked-out", checkOut: new Date().toISOString() }
+                          });
+                          toast.success("Visitor checked out");
+                          fetchData();
+                        }}
+                        className="rounded-lg bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent hover:bg-accent hover:text-white transition-all"
+                      >
+                        Check Out
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">—</span>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  {v.status === 'checked-in' ? (
-                    <button
-                      onClick={async () => {
-                        await apiClient(`/hostel/visitors/${v._id}`, {
-                          method: "PATCH",
-                          data: { status: "checked-out", checkOut: new Date().toISOString() }
-                        });
-                        toast.success("Visitor checked out");
-                        fetchData();
-                      }}
-                      className="rounded bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/20"
-                    >
-                      Check Out
-                    </button>
-                  ) : (
-                    <span className="text-xs text-muted-foreground capitalize">{v.status}</span>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {visitors.length === 0 && (
-              <EmptyState icon={Users} title="No visitor entries logged today" description="Create entries to track campus visitors." />
+              <EmptyState icon={Users} title="No visitor entries logged today" description="Log all campus visitors — students' family, service workers, delivery, contractors & more." />
             )}
           </div>
         </Panel>
@@ -1591,43 +1637,175 @@ function Page() {
       )}
 
 
-      {/* 10. Reports Center */}
-      {tab === "reports" && (
-        <Panel 
-          title="Hostel Reports Hub"
-          action={
-            <div className="flex gap-2">
-              <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs border border-border bg-background px-3 py-1.5 rounded-lg font-semibold hover:bg-muted">
-                <Printer className="h-3.5 w-3.5" />
-                Print Report
-              </button>
-              <button onClick={() => toast.success("Excel report exported!")} className="flex items-center gap-1.5 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-emerald-700">
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-                Export Excel
-              </button>
-            </div>
-          }
-        >
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="border border-border p-4 rounded-xl bg-card hover:shadow-md transition-all">
-                <h4 className="font-bold text-sm text-foreground mb-1">Hostel Occupancy Report</h4>
-                <p className="text-xs text-muted-foreground">List of all hostels with their active structures, capacity, and vacancy percentages.</p>
-              </div>
-              <div className="border border-border p-4 rounded-xl bg-card hover:shadow-md transition-all">
-                <h4 className="font-bold text-sm text-foreground mb-1">Fee Defaulters list</h4>
-                <p className="text-xs text-muted-foreground">Generate comprehensive lists of unpaid quarterly, monthly, and yearly invoices.</p>
-              </div>
-              <div className="border border-border p-4 rounded-xl bg-card hover:shadow-md transition-all">
-                <h4 className="font-bold text-sm text-foreground mb-1">In/Out Student Logs</h4>
-                <p className="text-xs text-muted-foreground">Movement history and gatepass verification dates for warden audits.</p>
-              </div>
-            </div>
-          </div>
-        </Panel>
-      )}
 
       {/* ----------------- MODALS ----------------- */}
+
+      {/* Add Visitor Modal */}
+      {showVisitorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowVisitorModal(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg rounded-2xl bg-card p-6 shadow-2xl border border-border max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between mb-4 pb-3 border-b border-border">
+              <div>
+                <h2 className="text-lg font-bold">Log Campus Visitor</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Students' family, service staff, delivery, contractors & more</p>
+              </div>
+              <button onClick={() => setShowVisitorModal(false)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-muted"><X className="h-4 w-4" /></button>
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                const visitorType = fd.get("visitorType") as string;
+                try {
+                  await apiClient("/hostel/visitors", {
+                    method: "POST",
+                    data: {
+                      visitorName: fd.get("visitorName"),
+                      visitorType,
+                      studentName: visitorType === "Student Visitor" ? fd.get("studentName") : null,
+                      relationship: visitorType === "Student Visitor" ? fd.get("relationship") : null,
+                      workOrder: fd.get("workOrder") || null,
+                      vehicleNo: fd.get("vehicleNo") || null,
+                      purpose: fd.get("purpose"),
+                      contact: fd.get("contact"),
+                      idProof: fd.get("idProof") || null,
+                      checkIn: new Date().toISOString(),
+                      status: "checked-in"
+                    }
+                  });
+                  toast.success("Visitor logged successfully!");
+                  setShowVisitorModal(false);
+                  fetchData();
+                } catch (err) {
+                  toast.error("Failed to log visitor.");
+                }
+              }}
+              className="space-y-4"
+            >
+              {/* Visitor Type Selector */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold">Visitor Type <span className="text-red-500">*</span></label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {[
+                    { type: "Student Visitor", icon: "👨‍👩‍👧", color: "border-blue-400 bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-300" },
+                    { type: "Electrician", icon: "⚡", color: "border-yellow-400 bg-yellow-50 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-300" },
+                    { type: "Plumber", icon: "🔧", color: "border-cyan-400 bg-cyan-50 text-cyan-800 dark:bg-cyan-950/30 dark:text-cyan-300" },
+                    { type: "Carpenter / Mason", icon: "🪚", color: "border-orange-400 bg-orange-50 text-orange-800 dark:bg-orange-950/30 dark:text-orange-300" },
+                    { type: "House Cleaner / Helper", icon: "🧹", color: "border-purple-400 bg-purple-50 text-purple-800 dark:bg-purple-950/30 dark:text-purple-300" },
+                    { type: "Delivery / Goods Truck", icon: "🚚", color: "border-emerald-400 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300" },
+                    { type: "Courier / Post", icon: "📦", color: "border-teal-400 bg-teal-50 text-teal-800 dark:bg-teal-950/30 dark:text-teal-300" },
+                    { type: "Contractor", icon: "🏗️", color: "border-red-400 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-300" },
+                    { type: "Government Inspector", icon: "🏛️", color: "border-slate-400 bg-slate-50 text-slate-800 dark:bg-slate-950/30 dark:text-slate-300" },
+                    { type: "Vendor / Salesperson", icon: "🛍️", color: "border-pink-400 bg-pink-50 text-pink-800 dark:bg-pink-950/30 dark:text-pink-300" },
+                    { type: "Other", icon: "👤", color: "border-gray-400 bg-gray-50 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300" },
+                  ].map(({ type, icon, color }) => (
+                    <label key={type} className="cursor-pointer">
+                      <input type="radio" name="visitorType" value={type} className="sr-only peer" required
+                        defaultChecked={type === "Student Visitor"}
+                        onChange={(e) => {
+                          const modal = e.currentTarget.closest('form')!;
+                          const studentSection = modal.querySelector('#student-section') as HTMLElement;
+                          const serviceSection = modal.querySelector('#service-section') as HTMLElement;
+                          const vehicleSection = modal.querySelector('#vehicle-section') as HTMLElement;
+                          const isStudent = e.currentTarget.value === 'Student Visitor';
+                          const isDelivery = ['Delivery / Goods Truck', 'Courier / Post', 'Contractor'].includes(e.currentTarget.value);
+                          if (studentSection) studentSection.style.display = isStudent ? '' : 'none';
+                          if (serviceSection) serviceSection.style.display = !isStudent ? '' : 'none';
+                          if (vehicleSection) vehicleSection.style.display = isDelivery ? '' : 'none';
+                        }}
+                      />
+                      <div className={`flex items-center gap-1.5 rounded-lg border-2 px-2.5 py-2 text-[11px] font-semibold transition-all peer-checked:ring-2 peer-checked:ring-offset-1 peer-checked:ring-primary ${color}`}>
+                        <span>{icon}</span>
+                        <span className="leading-tight">{type}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Visitor Name + Contact */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">Visitor Full Name <span className="text-red-500">*</span></label>
+                  <input name="visitorName" required placeholder="e.g. Ramesh Kumar" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-accent" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">Contact Number</label>
+                  <input name="contact" type="tel" placeholder="+91 XXXXX XXXXX" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-accent" />
+                </div>
+              </div>
+
+              {/* Student Visitor Section (shown by default) */}
+              <div id="student-section" className="space-y-3 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/10 p-3">
+                <p className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">👨‍👩‍👧 Student Visit Details</p>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">Student Being Visited</label>
+                  <select name="studentName" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm">
+                    <option value="">-- Select Student --</option>
+                    {students.map(s => (
+                      <option key={s._id || s.id} value={`${s.userId?.firstName || ''} ${s.userId?.lastName || ''}`.trim()}>
+                        {s.userId?.firstName || 'Student'} {s.userId?.lastName || ''} (Adm: {s.admissionNumber || '—'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">Relationship to Student</label>
+                  <select name="relationship" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm">
+                    <option value="Father">Father</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Guardian">Guardian</option>
+                    <option value="Sibling">Sibling</option>
+                    <option value="Uncle / Aunt">Uncle / Aunt</option>
+                    <option value="Grandparent">Grandparent</option>
+                    <option value="Family Friend">Family Friend</option>
+                    <option value="Other Relative">Other Relative</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Service / Work Section (hidden by default) */}
+              <div id="service-section" style={{display: 'none'}} className="space-y-3 rounded-xl border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/10 p-3">
+                <p className="text-[11px] font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wider">🔧 Service / Work Details</p>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">Work Order / Department / Description</label>
+                  <input name="workOrder" placeholder="e.g. Fix wiring in Block B, Supply 50kg rice, Pest control room 204" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-accent" />
+                </div>
+              </div>
+
+              {/* Vehicle / Delivery Section (hidden by default) */}
+              <div id="vehicle-section" style={{display: 'none'}} className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/10 p-3">
+                <label className="mb-1 block text-sm font-semibold text-emerald-700 dark:text-emerald-400">🚚 Vehicle / Truck Number</label>
+                <input name="vehicleNo" placeholder="e.g. MH12AB1234" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-accent" />
+              </div>
+
+              {/* Purpose + ID */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">Purpose of Visit <span className="text-red-500">*</span></label>
+                  <input name="purpose" required placeholder="e.g. Weekend visit, delivery" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-accent" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">ID Proof Type</label>
+                  <select name="idProof" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm">
+                    <option value="">-- None --</option>
+                    <option value="Aadhaar">Aadhaar Card</option>
+                    <option value="Voter ID">Voter ID</option>
+                    <option value="Driving Licence">Driving Licence</option>
+                    <option value="Passport">Passport</option>
+                    <option value="PAN Card">PAN Card</option>
+                    <option value="Employee ID">Employee ID</option>
+                  </select>
+                </div>
+              </div>
+
+              <button type="submit" className="w-full rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all shadow-md">
+                ✅ Log Visitor Entry
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       
       {/* Hostel Modal */}
       {showHostelModal && (

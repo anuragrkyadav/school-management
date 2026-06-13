@@ -310,7 +310,7 @@ export function StripePaymentForm({
         ) : (
           <>
             <CreditCard className="mr-2 inline h-4 w-4" />
-            Pay ${(amount / 100).toFixed(2)}
+            Pay ₹{(amount / 100).toFixed(2)}
           </>
         )}
       </button>
@@ -381,7 +381,7 @@ export function PaymentStatus({
             <p className="text-sm">
               Amount:{" "}
               <span className="font-medium">
-                {currency === "INR" ? "₹" : "$"}
+                {currency === "INR" ? "₹" : "₹"}
                 {amount}
               </span>
             </p>

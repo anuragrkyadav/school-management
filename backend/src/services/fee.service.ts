@@ -59,6 +59,15 @@ export class FeeService {
 
     let generatedCount = 0;
     for (const fee of feesToInsert) {
+       const existingFee = await Fee.findOne({
+          schoolId: fee.schoolId,
+          studentId: fee.studentId,
+          feeType: fee.feeType
+       });
+       if (existingFee) {
+          continue; // Skip generating to prevent duplicates of the same fee type
+       }
+
        const upserted = await Fee.findOneAndUpdate(
           { schoolId: fee.schoolId, studentId: fee.studentId, feeType: fee.feeType, dueDate: fee.dueDate },
           { $setOnInsert: fee },
@@ -74,7 +83,7 @@ export class FeeService {
        }
     }
 
-    return { message: `Invoices generated and parent notifications sent for ${generatedCount} students` };
+    return { message: `Invoices generated for ${generatedCount} students. Students with existing fee records of the same type were skipped.` };
   }
 
   static async applyConcession(schoolId: string, feeId: string, data: any) {
@@ -159,6 +168,8 @@ export class FeeService {
         path: 'studentId',
         populate: [
           { path: 'userId' },
+          { path: 'classId' },
+          { path: 'sectionId' },
           { 
             path: 'parentIds',
             populate: { path: 'userId' }
@@ -175,7 +186,18 @@ export class FeeService {
     } else if (query?.allowedBranchIds && query.allowedBranchIds.length > 0) {
       match.branchId = { $in: query.allowedBranchIds.map((id: any) => new Types.ObjectId(id)) };
     }
-    return Payment.find(match).populate('studentId').sort({ paymentDate: -1 }).limit(100);
+    return Payment.find(match)
+      .populate({
+        path: 'studentId',
+        populate: [
+          { path: 'userId' },
+          { path: 'classId' },
+          { path: 'sectionId' }
+        ]
+      })
+      .populate('feeId')
+      .sort({ paymentDate: -1 })
+      .limit(100);
   }
 
   static async getFeeStructures(schoolId: string) {
@@ -545,6 +567,15 @@ export class FeeService {
   static async createFeeInvoice(schoolId: string, data: any) {
     const student = await Student.findOne({ _id: data.studentId, schoolId, isDeleted: false });
     if (!student) throw new ApiError(404, 'Student not found');
+
+    const existingFee = await Fee.findOne({
+      schoolId,
+      studentId: student._id,
+      feeType: data.feeType.toUpperCase()
+    });
+    if (existingFee) {
+      throw new ApiError(400, `A fee invoice of type "${data.feeType}" is already assigned to this student.`);
+    }
 
     const fee = new Fee({
       schoolId: new Types.ObjectId(schoolId),

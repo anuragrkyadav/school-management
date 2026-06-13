@@ -1469,13 +1469,13 @@ function CanteenMessPage() {
                 >
                   {wallets.map((w) => (
                     <option key={w._id || w.id} value={w._id || w.id}>
-                      {w.studentName} - Balance: ${w.balance.toFixed(2)}
+                      {w.studentName} - Balance: ₹{w.balance.toFixed(2)}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="mb-1 block font-semibold text-muted-foreground">Load Amount ($)</label>
+                <label className="mb-1 block font-semibold text-muted-foreground">Load Amount (₹)</label>
                 <input
                   name="amount"
                   type="number"

@@ -153,7 +153,9 @@ export type AppRole =
   | "parent"
   | "driver"
   | "accountant"
-  | "super_admin";
+  | "super_admin"
+  | "hostel_head"
+  | "librarian";
 
 export interface UserProfile {
   id: string;
@@ -188,6 +190,8 @@ export const APP_ROLES: AppRole[] = [
   "student",
   "driver",
   "accountant",
+  "hostel_head",
+  "librarian",
 ];
 
 export function isAppRole(value: string): value is AppRole {

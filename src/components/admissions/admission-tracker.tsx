@@ -292,7 +292,12 @@ function DocumentVerificationStatus({ document }: { document: DocumentVerificati
           )}
         </div>
       </div>
-      <button className="text-xs text-primary hover:underline">View</button>
+      <button
+        onClick={() => window.open(document.fileUrl, "_blank")}
+        className="text-xs text-primary hover:underline"
+      >
+        View
+      </button>
     </div>
   );
 }

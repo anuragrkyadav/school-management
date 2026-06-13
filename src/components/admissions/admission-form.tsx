@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AdmissionApplicationSchema } from "@/lib/schemas";
 import { toast } from "sonner";
 import { Upload, X, CheckCircle, Clock } from "lucide-react";
+import { apiClient } from "@/lib/api-client";
 
 interface AdmissionFormProps {
   onSuccess?: () => void;
@@ -20,20 +21,124 @@ export function AdmissionEnquiryForm({ onSuccess }: AdmissionFormProps) {
     handleSubmit,
     formState: { errors, isSubmitting },
     watch,
+    trigger,
   } = useForm({
     resolver: zodResolver(AdmissionApplicationSchema),
     mode: "onBlur",
   });
 
+  const validateStep = async (nextStep: "personal" | "academic" | "parent" | "documents") => {
+    let fieldsToValidate: any[] = [];
+    if (step === "personal") {
+      fieldsToValidate = ["studentName", "dateOfBirth", "gender", "currentGrade", "email", "phone"];
+    } else if (step === "academic") {
+      fieldsToValidate = ["applyingForGrade"];
+    } else if (step === "parent") {
+      fieldsToValidate = ["fatherName", "motherName", "parentEmail", "parentPhone", "address", "city", "state", "pincode"];
+    }
+
+    const isValid = await trigger(fieldsToValidate);
+    if (isValid) {
+      setStep(nextStep);
+    } else {
+      toast.error("Please fix form validation errors before proceeding.");
+    }
+  };
+
   const onSubmit = async (data: any) => {
     try {
-      // TODO: Call server function submitAdmissionEnquiry(data)
+      // 1. Upload files to backend first
+      const documents = await Promise.all(
+        uploadedDocs.map(async (doc, idx) => {
+          const formData = new FormData();
+          formData.append("file", doc.file);
+
+          const res = await fetch("/api/v1/admissions/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            throw new Error(`Failed to upload ${doc.name}`);
+          }
+
+          const uploadData = await res.json();
+          // Make sure it's a full URL so Zod schema validation passes
+          const fileUrl = `${window.location.origin}${uploadData.url}`;
+
+          let documentType: "Birth Certificate" | "Previous Marksheet" | "Transfer Certificate" | "Address Proof" | "Photo" | "Other" = "Other";
+          const nameLower = doc.name.toLowerCase();
+          if (nameLower.includes("birth")) {
+            documentType = "Birth Certificate";
+          } else if (nameLower.includes("marksheet") || nameLower.includes("report") || nameLower.includes("grade")) {
+            documentType = "Previous Marksheet";
+          } else if (nameLower.includes("transfer") || nameLower.includes("tc")) {
+            documentType = "Transfer Certificate";
+          } else if (nameLower.includes("address") || nameLower.includes("proof") || nameLower.includes("bill")) {
+            documentType = "Address Proof";
+          } else if (nameLower.includes("photo") || nameLower.includes("pic") || nameLower.includes("image")) {
+            documentType = "Photo";
+          }
+
+          return {
+            id: doc.id || `doc_${idx}_${Date.now()}`,
+            documentType,
+            fileName: doc.name,
+            fileUrl,
+            uploadedAt: new Date().toISOString(),
+            verificationStatus: "Pending" as const,
+          };
+        })
+      );
+
+      const payload = {
+        ...data,
+        documents,
+        applicationStatus: "Submitted",
+        appliedAt: new Date().toISOString(),
+      };
+
+      await apiClient("/admissions", {
+        method: "POST",
+        data: payload,
+      });
+
       toast.success("Application submitted successfully!", {
         description: "We'll review your application and contact you soon.",
       });
       onSuccess?.();
-    } catch (err) {
-      toast.error("Failed to submit application");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to submit application");
+    }
+  };
+
+  const onInvalid = (errors: any) => {
+    console.error("Form validation errors:", errors);
+    const errorFields = Object.keys(errors);
+    if (errorFields.length > 0) {
+      const stepsWithErrors: string[] = [];
+      const personalFields = ["studentName", "dateOfBirth", "gender", "currentGrade", "email", "phone"];
+      const academicFields = ["applyingForGrade", "currentSchool"];
+      const parentFields = ["fatherName", "motherName", "parentEmail", "parentPhone", "address", "city", "state", "pincode"];
+
+      errorFields.forEach(field => {
+        if (personalFields.includes(field) && !stepsWithErrors.includes("Personal Info")) {
+          stepsWithErrors.push("Personal Info");
+        } else if (academicFields.includes(field) && !stepsWithErrors.includes("Academic Details")) {
+          stepsWithErrors.push("Academic Details");
+        } else if (parentFields.includes(field) && !stepsWithErrors.includes("Parent Details")) {
+          stepsWithErrors.push("Parent Details");
+        }
+      });
+
+      const fieldDetails = errorFields.map(field => {
+        const fieldName = field.replace(/([A-Z])/g, ' $1').toLowerCase();
+        return `${fieldName}: ${errors[field]?.message || 'Required'}`;
+      }).join(", ");
+
+      toast.error("Form Validation Failed", {
+        description: `Please fix errors in: ${stepsWithErrors.join(", ")}. Details: ${fieldDetails}`,
+      });
     }
   };
 
@@ -80,7 +185,7 @@ export function AdmissionEnquiryForm({ onSuccess }: AdmissionFormProps) {
         ))}
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
         {/* STEP 1: PERSONAL INFORMATION */}
         {step === "personal" && (
           <div className="space-y-4">
@@ -165,7 +270,7 @@ export function AdmissionEnquiryForm({ onSuccess }: AdmissionFormProps) {
 
             <button
               type="button"
-              onClick={() => setStep("academic")}
+              onClick={() => validateStep("academic")}
               className="mt-6 w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               Next: Academic Details →
@@ -217,7 +322,7 @@ export function AdmissionEnquiryForm({ onSuccess }: AdmissionFormProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setStep("parent")}
+                onClick={() => validateStep("parent")}
                 className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Next: Parent Details →
@@ -324,7 +429,7 @@ export function AdmissionEnquiryForm({ onSuccess }: AdmissionFormProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setStep("documents")}
+                onClick={() => validateStep("documents")}
                 className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Next: Upload Documents →
@@ -338,7 +443,10 @@ export function AdmissionEnquiryForm({ onSuccess }: AdmissionFormProps) {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Upload Documents</h3>
 
-            <div className="rounded-lg border-2 border-dashed border-border p-6 text-center">
+            <label
+              htmlFor="file-input"
+              className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-6 text-center hover:bg-muted/40 transition-colors"
+            >
               <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
               <p className="text-sm font-medium">Drag files here or click to select</p>
               <p className="text-xs text-muted-foreground">Max 5MB per file</p>
@@ -349,10 +457,7 @@ export function AdmissionEnquiryForm({ onSuccess }: AdmissionFormProps) {
                 className="hidden"
                 id="file-input"
               />
-              <label htmlFor="file-input" className="cursor-pointer">
-                <div />
-              </label>
-            </div>
+            </label>
 
             {uploadedDocs.length > 0 && (
               <div className="space-y-2">

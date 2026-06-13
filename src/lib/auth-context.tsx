@@ -160,6 +160,9 @@ function roleSubtitle(role: AppRole): string {
     parent: "Parent",
     student: "Student",
     driver: "Transport Operator",
+    accountant: "Accountant",
+    hostel_head: "Hostel Head",
+    librarian: "Librarian",
   };
   return labels[role];
 }
@@ -253,7 +256,13 @@ async function fetchProfile(): Promise<UserProfile | null> {
 }
 
 export function isAdminPortalRole(role: UserRole): boolean {
-  return role === "admin" || role === "school_admin" || role === "super_admin";
+  return (
+    role === "admin" ||
+    role === "school_admin" ||
+    role === "super_admin" ||
+    role === "hostel_head" ||
+    role === "librarian"
+  );
 }
 
 export function getRolePath(role: UserRole, schoolId?: string): string {
@@ -262,6 +271,8 @@ export function getRolePath(role: UserRole, schoolId?: string): string {
       return schoolId ? "/admin" : "/super-admin";
     case "school_admin":
     case "admin":
+    case "hostel_head":
+    case "librarian":
       return "/admin";
     case "teacher":
       return "/teacher";

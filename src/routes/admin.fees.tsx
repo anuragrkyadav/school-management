@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { Wallet, AlertTriangle, CheckCircle, Search, Plus, X, Settings } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { PageHeader, StatCard, Panel, EmptyState } from "@/components/module-shell";
 import { apiClient, BASE_URL } from "@/lib/api-client";
-import { useEffect } from "react";
 
 export const Route = createFileRoute("/admin/fees")({
   head: () => ({ meta: [{ title: "Fees & Finance · Campus OS" }] }),
@@ -13,7 +12,7 @@ export const Route = createFileRoute("/admin/fees")({
 });
 
 function Page() {
-  const [tab, setTab] = useState<"overview" | "dues" | "generate" | "categories" | "siblings" | "notifications">("overview");
+  const [tab, setTab] = useState<"overview" | "dues" | "reports" | "generate" | "categories" | "siblings" | "notifications">("overview");
   const [search, setSearch] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [showAddCat, setShowAddCat] = useState(false);
@@ -21,6 +20,10 @@ function Page() {
   const [applyConcessionTarget, setApplyConcessionTarget] = useState<any | null>(null);
   const [discountPercent, setDiscountPercent] = useState(10);
   const [processingSibling, setProcessingSibling] = useState(false);
+
+  const [classFilter, setClassFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   const [feeRecords, setFeeRecords] = useState<any[]>([]);
   const [paymentTransactions, setPaymentTransactions] = useState<any[]>([]);
@@ -62,10 +65,66 @@ function Page() {
   ];
 
   const filteredDues = feeRecords.filter((f) => {
+    const sName = `${f.studentId?.user?.firstName || f.studentId?.userId?.firstName || ''} ${f.studentId?.user?.lastName || f.studentId?.userId?.lastName || ''}`.toLowerCase();
+    const matchesSearch = sName.includes(search.toLowerCase());
+
+    const studentClassId = f.studentId?.classId?._id || f.studentId?.classId;
+    const matchesClass = classFilter === "all" || (studentClassId && studentClassId.toString() === classFilter);
+
     const dueAmount = (f.amount || 0) - (f.discountAmount || 0) - (f.paidAmount || 0);
-    const sName = `${f.studentId?.user?.firstName || ''} ${f.studentId?.user?.lastName || ''}`.toLowerCase();
-    return dueAmount > 0 && sName.includes(search.toLowerCase());
+    const isPaid = f.status === "PAID" || dueAmount <= 0;
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "paid" && isPaid) ||
+      (statusFilter === "unpaid" && !isPaid);
+
+    const matchesType = typeFilter === "all" || (f.feeType && f.feeType.toUpperCase() === typeFilter.toUpperCase());
+
+    return matchesSearch && matchesClass && matchesStatus && matchesType;
   });
+
+  const classWiseUnpaid = useMemo(() => {
+    const map = new Map<string, { className: string; unpaidCount: number; totalDue: number; unpaidStudents: Set<string> }>();
+    
+    classes.forEach(c => {
+      map.set(c._id.toString(), {
+        className: `${c.name} ${c.section ? `(${c.section})` : ""}`,
+        unpaidCount: 0,
+        totalDue: 0,
+        unpaidStudents: new Set<string>()
+      });
+    });
+
+    feeRecords.forEach(f => {
+      const student = f.studentId;
+      if (!student) return;
+      const classId = (student.classId?._id || student.classId || "").toString();
+      if (!classId) return;
+
+      const due = (f.amount || 0) - (f.discountAmount || 0) - (f.paidAmount || 0);
+      if (due > 0) {
+        let entry = map.get(classId);
+        if (!entry) {
+          entry = {
+            className: "Unknown Class",
+            unpaidCount: 0,
+            totalDue: 0,
+            unpaidStudents: new Set<string>()
+          };
+          map.set(classId, entry);
+        }
+        entry.totalDue += due;
+        
+        const studentIdStr = (student._id || student).toString();
+        if (!entry.unpaidStudents.has(studentIdStr)) {
+          entry.unpaidStudents.add(studentIdStr);
+          entry.unpaidCount += 1;
+        }
+      }
+    });
+
+    return Array.from(map.values()).filter(item => item.className !== "Unknown Class" || item.unpaidCount > 0);
+  }, [feeRecords, classes]);
 
   return (
     <div>
@@ -97,7 +156,8 @@ function Page() {
         {(
           [
             ["overview", "Overview"],
-            ["dues", "Outstanding Dues"],
+            ["dues", "Fee Ledger & Status"],
+            ["reports", "Class Dues Report"],
             ["generate", "Generate Invoices"],
             ["categories", "Fee Categories"],
             ["siblings", "Sibling Discounts"],
@@ -153,8 +213,20 @@ function Page() {
                     className="flex items-center justify-between rounded-lg border border-border p-3"
                   >
                     <div>
-                      <div className="text-sm font-medium">{p.studentId?.user?.firstName} {p.studentId?.user?.lastName}</div>
+                      <div className="text-sm font-medium">
+                        {p.studentId?.user?.firstName || p.studentId?.userId?.firstName || '—'} {p.studentId?.user?.lastName || p.studentId?.userId?.lastName || ''}
+                        <span className="ml-2 text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                          Code: {p.studentId?.admissionNumber || '—'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Class: {p.studentId?.classId?.name || p.studentId?.classDetails?.name || '—'}
+                        {p.studentId?.sectionId?.name || p.studentId?.sectionDetails?.name ? ` · Section: ${p.studentId?.sectionId?.name || p.studentId?.sectionDetails?.name}` : ''}
+                      </div>
                       <div className="text-xs text-muted-foreground">
+                        Category: <strong className="text-foreground">{p.feeId?.feeType || '—'}</strong>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
                         {new Date(p.paymentDate).toLocaleDateString()} · {p.paymentMethod}
                       </div>
                     </div>
@@ -426,21 +498,63 @@ function Page() {
           ) : (
             /* Global Outstanding Dues list */
             <>
-              <div className="mb-4 relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search student by name..."
-                  className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search student..."
+                    className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  />
+                </div>
+                <div>
+                  <select
+                    value={classFilter}
+                    onChange={(e) => setClassFilter(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none"
+                  >
+                    <option value="all">All Classes</option>
+                    {classes.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name} {c.section ? `(${c.section})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="paid">Paid</option>
+                    <option value="unpaid">Unpaid / Outstanding</option>
+                  </select>
+                </div>
+                <div>
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none"
+                  >
+                    <option value="all">All Fee Types</option>
+                    <option value="TUITION">Tuition Fee</option>
+                    <option value="TRANSPORT">Transport Fee</option>
+                    <option value="ACTIVITY">Activity Fee</option>
+                    <option value="EXAM">Exam Fee</option>
+                    <option value="CUSTOM">Custom Fee</option>
+                  </select>
+                </div>
               </div>
               <div className="hidden md:block">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                       <th className="pb-3 pr-4">Student</th>
-                      <th className="pb-3 pr-4">Grade</th>
+                      <th className="pb-3 pr-4">Class</th>
+                      <th className="pb-3 pr-4">Fee Type</th>
                       <th className="pb-3 pr-4">Total</th>
                       <th className="pb-3 pr-4">Paid</th>
                       <th className="pb-3 pr-4">Due</th>
@@ -452,21 +566,29 @@ function Page() {
                   <tbody>
                     {filteredDues.map((f) => {
                       const due = (f.amount || 0) - (f.discountAmount || 0) - (f.paidAmount || 0);
+                      const className = f.studentId?.classId?.name || "N/A";
+                      const sectionName = f.studentId?.sectionId?.name ? ` (${f.studentId?.sectionId?.name})` : "";
                       return (
-                        <tr key={f._id} className="border-b border-border/50 last:border-0">
-                          <td className="py-3 pr-4 font-medium">{f.studentId?.user?.firstName} {f.studentId?.user?.lastName}</td>
-                          <td className="py-3 pr-4">{f.feeType}</td>
+                        <tr key={f._id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="py-3 pr-4 font-medium text-foreground">
+                            {f.studentId?.userId?.firstName || f.studentId?.user?.firstName || ""} {f.studentId?.userId?.lastName || f.studentId?.user?.lastName || ""}
+                            <span className="ml-2 text-xs font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {f.studentId?.admissionNumber || "N/A"}
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4">{className}{sectionName}</td>
+                          <td className="py-3 pr-4 font-semibold text-muted-foreground">{f.feeType}</td>
                           <td className="py-3 pr-4">₹{f.amount?.toLocaleString()}</td>
                           <td className="py-3 pr-4">₹{f.paidAmount?.toLocaleString()}</td>
-                          <td className="py-3 pr-4 font-medium text-destructive">
+                          <td className={`py-3 pr-4 font-semibold ${due > 0 ? "text-destructive" : "text-emerald-600"}`}>
                             ₹{due.toLocaleString()}
                           </td>
                           <td className="py-3 pr-4 text-muted-foreground">{new Date(f.dueDate).toLocaleDateString()}</td>
                           <td className="py-3 pr-4">
                             <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${f.status === "OVERDUE" ? "bg-destructive/10 text-destructive" : "bg-[oklch(0.75_0.15_75)]/15 text-[oklch(0.50_0.15_75)]"}`}
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${f.status === "OVERDUE" ? "bg-destructive/10 text-destructive" : f.status === "PAID" || due <= 0 ? "bg-emerald-100 text-emerald-800" : "bg-[oklch(0.75_0.15_75)]/15 text-[oklch(0.50_0.15_75)]"}`}
                             >
-                              {f.status}
+                              {due <= 0 ? "PAID" : f.status}
                             </span>
                           </td>
                           <td className="py-3">
@@ -487,6 +609,9 @@ function Page() {
                                   Discount
                                 </button>
                               )}
+                              {due <= 0 && (
+                                <span className="text-xs text-emerald-600 font-semibold">Cleared</span>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -498,35 +623,49 @@ function Page() {
               <div className="md:hidden space-y-3">
                 {filteredDues.map((f) => {
                   const due = (f.amount || 0) - (f.discountAmount || 0) - (f.paidAmount || 0);
+                  const className = f.studentId?.classId?.name || "N/A";
+                  const sectionName = f.studentId?.sectionId?.name ? ` (${f.studentId?.sectionId?.name})` : "";
                   return (
-                    <div key={f._id} className="rounded-lg border border-border p-3">
+                    <div key={f._id} className="rounded-lg border border-border p-3 bg-card shadow-sm">
                       <div className="flex justify-between mb-1">
-                        <span className="font-medium">{f.studentId?.user?.firstName} {f.studentId?.user?.lastName}</span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${f.status === "OVERDUE" ? "bg-destructive/10 text-destructive" : "bg-[oklch(0.75_0.15_75)]/15 text-[oklch(0.50_0.15_75)]"}`}
-                        >
-                          {f.status}
+                        <span className="font-medium">
+                          {f.studentId?.userId?.firstName || f.studentId?.user?.firstName || ""} {f.studentId?.userId?.lastName || f.studentId?.user?.lastName || ""}
+                          <span className="ml-1.5 text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {f.studentId?.admissionNumber || "N/A"}
+                          </span>
                         </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${f.status === "OVERDUE" ? "bg-destructive/10 text-destructive" : due <= 0 ? "bg-emerald-100 text-emerald-800" : "bg-[oklch(0.75_0.15_75)]/15 text-[oklch(0.50_0.15_75)]"}`}
+                        >
+                          {due <= 0 ? "PAID" : f.status}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Class: {className}{sectionName} · Type: <strong className="text-foreground">{f.feeType}</strong>
                       </div>
                       <div className="text-xs text-muted-foreground mb-2">
                         Due: ₹{due.toLocaleString()} · By {new Date(f.dueDate).toLocaleDateString()}
                       </div>
                       <div className="flex gap-2">
-                        {due > 0 && (
-                          <button
-                            onClick={() => setCollectFeeTarget(f)}
-                            className="rounded bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 flex-1"
-                          >
-                            Collect
-                          </button>
-                        )}
-                        {due > 0 && (
-                          <button
-                            onClick={() => setApplyConcessionTarget(f)}
-                            className="rounded bg-secondary border border-border px-3 py-1 text-xs font-semibold hover:bg-muted flex-1"
-                          >
-                            Discount
-                          </button>
+                        {due > 0 ? (
+                          <>
+                            <button
+                              onClick={() => setCollectFeeTarget(f)}
+                              className="rounded bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 flex-1"
+                            >
+                              Collect
+                            </button>
+                            <button
+                              onClick={() => setApplyConcessionTarget(f)}
+                              className="rounded bg-secondary border border-border px-3 py-1 text-xs font-semibold hover:bg-muted flex-1"
+                            >
+                              Discount
+                            </button>
+                          </>
+                        ) : (
+                          <div className="text-xs text-emerald-600 font-semibold text-center w-full bg-emerald-50 py-1 rounded">
+                            Fee Cleared
+                          </div>
                         )}
                       </div>
                     </div>
@@ -536,12 +675,53 @@ function Page() {
               {filteredDues.length === 0 && (
                 <EmptyState
                   icon={CheckCircle}
-                  title="No outstanding dues"
-                  description="All fees are cleared!"
+                  title="No matching fee records"
+                  description="Try adjusting your filter options or search queries."
                 />
               )}
             </>
           )}
+        </Panel>
+      )}
+
+      {tab === "reports" && (
+        <Panel 
+          title="Class-wise Outstanding Dues Report" 
+          subtitle="Overview of collection metrics and count of unpaid students grouped by class grade."
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border text-muted-foreground text-xs font-semibold uppercase">
+                  <th className="pb-3 pr-4">Class / Grade</th>
+                  <th className="pb-3 px-4 text-center">Unpaid Students</th>
+                  <th className="pb-3 px-4 text-right">Total Dues Outstanding</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {classWiseUnpaid.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-muted/40 transition-colors">
+                    <td className="py-3.5 pr-4 font-semibold text-foreground">{item.className}</td>
+                    <td className="py-3.5 px-4 text-center font-bold">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.unpaidCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                        {item.unpaidCount} students
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-bold text-destructive">
+                      ₹{item.totalDue.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+                {classWiseUnpaid.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="text-center py-8 text-sm text-muted-foreground">
+                      No classes or fee records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </Panel>
       )}
 
@@ -668,6 +848,7 @@ function Page() {
                     <option value="TUITION">Tuition Fee</option>
                     <option value="TRANSPORT">Transport Fee</option>
                     <option value="ACTIVITY">Activity Fee</option>
+                    <option value="EXAM">Exam Fee</option>
                     <option value="CUSTOM">Custom Fee</option>
                   </select>
                 </div>
@@ -850,8 +1031,13 @@ function Page() {
                     .map((f) => {
                       const outstandingAmount = f.amount - (f.discountAmount || 0) - (f.paidAmount || 0);
                       return (
-                        <tr key={f._id} className="border-b border-border/50 last:border-0">
-                          <td className="py-3 pr-4 font-medium">{f.studentId?.user?.firstName} {f.studentId?.user?.lastName}</td>
+                        <tr key={f._id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="py-3 pr-4 font-medium text-foreground">
+                            {f.studentId?.userId?.firstName || f.studentId?.user?.firstName || ""} {f.studentId?.userId?.lastName || f.studentId?.user?.lastName || ""}
+                            <span className="ml-2 text-xs font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {f.studentId?.admissionNumber || "N/A"}
+                            </span>
+                          </td>
                           <td className="py-3 pr-4 text-muted-foreground">{f.description || f.feeType}</td>
                           <td className="py-3 pr-4 font-medium">₹{outstandingAmount.toLocaleString()}</td>
                           <td className="py-3 pr-4 text-muted-foreground">{new Date(f.dueDate).toLocaleDateString()}</td>
@@ -891,7 +1077,12 @@ function Page() {
                   return (
                     <div key={f._id} className="rounded-lg border border-border p-3">
                       <div className="flex justify-between mb-1">
-                        <span className="font-medium">{f.studentId?.user?.firstName} {f.studentId?.user?.lastName}</span>
+                        <span className="font-medium">
+                          {f.studentId?.userId?.firstName || f.studentId?.user?.firstName || ""} {f.studentId?.userId?.lastName || f.studentId?.user?.lastName || ""}
+                          <span className="ml-1.5 text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {f.studentId?.admissionNumber || "N/A"}
+                          </span>
+                        </span>
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-medium ${f.status === "OVERDUE" ? "bg-destructive/10 text-destructive" : "bg-[oklch(0.75_0.15_75)]/15 text-[oklch(0.50_0.15_75)]"}`}
                         >
@@ -1137,7 +1328,7 @@ function CollectFeeModal({
           </button>
         </div>
         <div className="text-sm text-muted-foreground mb-4">
-          Student: <span className="font-medium text-foreground">{feeRecord.studentId?.user?.firstName} {feeRecord.studentId?.user?.lastName}</span>
+          Student: <span className="font-medium text-foreground">{feeRecord.studentId?.userId?.firstName || feeRecord.studentId?.user?.firstName || ""} {feeRecord.studentId?.userId?.lastName || feeRecord.studentId?.user?.lastName || ""} ({feeRecord.studentId?.admissionNumber || "N/A"})</span>
         </div>
         <form onSubmit={handleCollect} className="space-y-4">
           <div className="space-y-2">
@@ -1271,7 +1462,7 @@ function ConcessionModal({
         </div>
         <div className="text-sm text-muted-foreground mb-4 space-y-1">
           <div>
-            Student: <span className="font-semibold text-foreground">{feeRecord.studentId?.user?.firstName} {feeRecord.studentId?.user?.lastName}</span>
+            Student: <span className="font-semibold text-foreground">{feeRecord.studentId?.userId?.firstName || feeRecord.studentId?.user?.firstName || ""} {feeRecord.studentId?.userId?.lastName || feeRecord.studentId?.user?.lastName || ""} ({feeRecord.studentId?.admissionNumber || "N/A"})</span>
           </div>
           <div>
             Remaining Outstanding: <span className="font-semibold text-foreground">₹{outstanding.toLocaleString()}</span>

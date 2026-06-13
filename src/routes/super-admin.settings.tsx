@@ -140,6 +140,7 @@ function SuperAdminSettings() {
                     <div>
                       <label className="block text-sm font-medium mb-2">Platform Currency</label>
                       <select value={formData.general?.currency || ''} onChange={(e) => handleInputChange('general', 'currency', e.target.value)} className="w-full rounded-md border border-slate-300 p-2.5 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <option value="INR">INR (₹)</option>
                         <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>
                         <option value="GBP">GBP (£)</option>

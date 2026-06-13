@@ -1,5 +1,5 @@
-import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, Outlet, Navigate, useLocation } from "@tanstack/react-router";
+import { useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -108,6 +108,28 @@ export const Route = createFileRoute("/admin")({
 
 function AdminLayout() {
   const { isAuthenticated, user, authLoading } = useAuth();
+  const location = useLocation();
+
+  const filteredGroups = useMemo(() => {
+    if (!user) return groups;
+    if (user.role === "hostel_head") {
+      return [
+        {
+          label: "Operations",
+          items: [{ to: "/admin/hostel", label: "Hostel", icon: Building2 }],
+        },
+      ];
+    }
+    if (user.role === "librarian") {
+      return [
+        {
+          label: "Operations",
+          items: [{ to: "/admin/library", label: "Library Management", icon: Library }],
+        },
+      ];
+    }
+    return groups;
+  }, [user?.role]);
 
   if (authLoading) {
     return (
@@ -125,8 +147,18 @@ function AdminLayout() {
     return <Navigate to={getRolePath(user.role, user.schoolId)} />;
   }
 
+  const pathname = location.pathname;
+
+  if (user.role === "hostel_head" && !pathname.startsWith("/admin/hostel")) {
+    return <Navigate to="/admin/hostel" />;
+  }
+
+  if (user.role === "librarian" && !pathname.startsWith("/admin/library")) {
+    return <Navigate to="/admin/library" />;
+  }
+
   return (
-    <ModuleShell brand="Campus OS" roleLabel="Administrator" groups={groups}>
+    <ModuleShell brand="Campus OS" roleLabel={user.role === "hostel_head" ? "Hostel Head" : user.role === "librarian" ? "Librarian" : "Administrator"} groups={filteredGroups}>
       <Outlet />
     </ModuleShell>
   );

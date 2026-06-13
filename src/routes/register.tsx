@@ -172,7 +172,7 @@ function RegisterPage() {
         monthlyPrice: plan.price,
         billingCycle: plan.billingCycle || "MONTHLY",
         currency: plan.currency || "USD",
-        currencySymbol: plan.currency === 'INR' ? '₹' : '$',
+        currencySymbol: '₹',
         students: `Up to ${plan.limits?.maxStudents || 0}`,
         teachers: `Up to ${plan.limits?.maxTeachers || 0}`,
         storage: `${((plan.limits?.maxStorageBytes || 0) / (1024 * 1024 * 1024)).toFixed(0)} GB`,

@@ -43,7 +43,7 @@ export const hireEmployeeSchema = z.object({
       password: z.string().min(6),
       firstName: z.string().min(1),
       lastName: z.string().min(1),
-      role: z.enum(['TEACHER', 'ACCOUNTANT', 'DRIVER', 'SCHOOL_ADMIN']),
+      role: z.enum(['TEACHER', 'ACCOUNTANT', 'DRIVER', 'SCHOOL_ADMIN', 'HOSTEL_HEAD', 'LIBRARIAN']),
     })
   }),
 });

@@ -144,7 +144,7 @@ export class AuthService {
       lastName,
       email: input.email,
       passwordHash,
-      role: resolvedRole,
+      role: resolvedRole as UserRole,
       schoolId: sId,
     })) as IUser & Document;
 
@@ -196,7 +196,7 @@ export class AuthService {
           }
         }
       }
-    } else if (resolvedRole === 'TEACHER' || resolvedRole === 'DRIVER' || resolvedRole === 'ACCOUNTANT') {
+    } else if (resolvedRole === 'TEACHER' || resolvedRole === 'DRIVER' || resolvedRole === 'ACCOUNTANT' || resolvedRole === 'HOSTEL_HEAD' || resolvedRole === 'LIBRARIAN') {
       const employeeId = `EMP_${uId.toString().slice(-6).toUpperCase()}`;
       await Employee.create({
         schoolId: sId,

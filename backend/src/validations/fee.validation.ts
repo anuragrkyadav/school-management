@@ -85,7 +85,7 @@ export const recordManualPaymentSchema = z.object({
 export const createFeeInvoiceSchema = z.object({
   body: z.object({
     studentId: z.string().min(24),
-    feeType: z.enum(['TUITION', 'TRANSPORT', 'ACTIVITY', 'CUSTOM']),
+    feeType: z.enum(['TUITION', 'TRANSPORT', 'ACTIVITY', 'EXAM', 'CUSTOM']),
     amount: z.coerce.number().min(0),
     dueDate: z.string().datetime(),
     description: z.string().optional()

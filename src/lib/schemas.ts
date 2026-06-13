@@ -401,7 +401,7 @@ export const AdmissionApplicationSchema = z.object({
   rejectionReason: z.string().optional(),
   documents: z.array(DocumentVerificationSchema).default([]),
   admissionFeeStatus: z.enum(["Pending", "Paid", "Waived"]).default("Pending"),
-  admissionFeeAmount: z.number().nonnegative(),
+  admissionFeeAmount: z.number().nonnegative().default(5000),
   notes: z.string().optional(),
   parentEmail: z.string().email(),
   parentPhone: z.string().min(10),

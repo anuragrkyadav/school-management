@@ -1688,6 +1688,8 @@ function AddStaffForm({ onClose, onRefresh }: { onClose: () => void; onRefresh: 
                   <option value="TEACHER">Teacher</option>
                   <option value="ACCOUNTANT">Staff / Accountant</option>
                   <option value="DRIVER">Staff / Driver</option>
+                  <option value="HOSTEL_HEAD">Hostel Management Head</option>
+                  <option value="LIBRARIAN">Library Management</option>
                   <option value="SCHOOL_ADMIN">Admin</option>
                 </select>
               </div>

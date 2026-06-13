@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { PageHeader, Panel, EmptyState } from "@/components/module-shell";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
-import { AlertCircle, Calendar, Plus, Users, CheckCircle, X, DollarSign } from "lucide-react";
+import { AlertCircle, Calendar, Plus, Users, CheckCircle, X, IndianRupee } from "lucide-react";
 
 export const Route = createFileRoute("/student/hostel")({
   head: () => ({ meta: [{ title: "Hostel · Campus OS" }] }),
@@ -163,7 +163,7 @@ function Page() {
               </div>
             ))}
             {invoices.length === 0 && (
-              <EmptyState icon={DollarSign} title="No pending bills" description="You have no outstanding hostel billing invoices." />
+              <EmptyState icon={IndianRupee} title="No pending bills" description="You have no outstanding hostel billing invoices." />
             )}
           </div>
         </Panel>

@@ -132,7 +132,7 @@ function Page() {
         />
         <StatCard
           label="Stock Book Value"
-          value={`$${totalValue}`}
+          value={`₹${totalValue}`}
           icon={FileText}
           tone="success"
         />
@@ -316,7 +316,7 @@ function Page() {
                     <td className="py-3.5 px-4 font-semibold">{po.item}</td>
                     <td className="py-3.5 px-4 text-xs text-muted-foreground">{po.supplier}</td>
                     <td className="py-3.5 px-4 font-semibold text-center">{po.qty}</td>
-                    <td className="py-3.5 px-4 font-bold text-foreground">${po.cost}</td>
+                    <td className="py-3.5 px-4 font-bold text-foreground">₹{po.cost}</td>
                     <td className="py-3.5 px-4 text-xs text-muted-foreground">{po.date}</td>
                     <td className="py-3.5 pl-4 text-right">
                       <span
@@ -395,7 +395,7 @@ function Page() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Total Cost ($)</label>
+                  <label className="mb-1 block text-sm font-medium">Total Cost (₹)</label>
                   <input
                     name="cost"
                     type="number"
